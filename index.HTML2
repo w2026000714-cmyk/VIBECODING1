@@ -1,0 +1,1099 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>에볼루션 아레나 - 20단계 진화 서바이벌</title>
+    <!-- Tailwind CSS -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- FontAwesome for gaming icons -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <!-- Google Fonts: Orbitron & Joah -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@500;800;900&family=Nanum+Gothic:wght@400;700;800&display=swap" rel="stylesheet">
+    <style>
+        body {
+            font-family: 'Nanum Gothic', sans-serif;
+            user-select: none;
+            -webkit-user-select: none;
+            touch-action: none;
+        }
+        .font-game {
+            font-family: 'Orbitron', 'Nanum Gothic', sans-serif;
+        }
+        /* Glowing effects for evolution styling */
+        .glow-orange {
+            box-shadow: 0 0 15px rgba(249, 115, 22, 0.6);
+        }
+        .glow-blue {
+            box-shadow: 0 0 15px rgba(59, 130, 246, 0.6);
+        }
+        .glow-gold {
+            box-shadow: 0 0 25px rgba(234, 179, 8, 0.8);
+            animation: pulse-glow 2s infinite alternate;
+        }
+        @keyframes pulse-glow {
+            0% { box-shadow: 0 0 15px rgba(234, 179, 8, 0.6); }
+            100% { box-shadow: 0 0 30px rgba(234, 179, 8, 1); }
+        }
+        /* Custom scrollbar for evolution list */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: rgba(15, 23, 42, 0.8);
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #475569;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #fbbf24;
+        }
+        /* Hide scrollbar completely for the top horizontal bar */
+        .hide-scrollbar::-webkit-scrollbar {
+            display: none;
+        }
+        .hide-scrollbar {
+            -ms-overflow-style: none;
+            scrollbar-width: none;
+        }
+    </style>
+</head>
+<body class="bg-slate-900 overflow-hidden w-screen h-screen text-white relative">
+
+    <!-- Main Game Container (Full Screen) -->
+    <main class="absolute inset-0 bg-slate-950 flex items-center justify-center overflow-hidden">
+        
+        <!-- Top Floating Evolution Stages -->
+        <div class="absolute top-0 left-0 w-full z-30 bg-slate-900/80 backdrop-blur-md border-b border-slate-700/80 px-4 py-2.5 flex items-center gap-3 overflow-x-auto whitespace-nowrap scroll-smooth pointer-events-auto hide-scrollbar" id="evolution-guide-list">
+            <!-- Will be dynamically updated by JS -->
+        </div>
+
+        <!-- Live HUD top header inside canvas overlay -->
+        <div class="absolute top-16 left-4 right-4 z-10 flex justify-between items-start pointer-events-none gap-2">
+            
+            <div class="flex flex-col gap-2 pointer-events-auto shrink-0">
+                <!-- Stage / Animal Badges -->
+                <div class="flex items-center gap-3 bg-slate-900/90 backdrop-blur border border-slate-700 px-4 py-2 rounded-2xl shadow-lg">
+                    <div class="w-10 h-10 rounded-xl bg-slate-800 flex items-center justify-center text-2xl" id="hud-animal-emoji">
+                        🐛
+                    </div>
+                    <div>
+                        <div class="text-[10px] text-slate-400 uppercase tracking-widest font-bold">Current Tier</div>
+                        <div class="text-sm font-extrabold text-amber-400" id="hud-animal-name">1단계: 미생물</div>
+                    </div>
+                </div>
+
+                <!-- In-game Stats Panel (Moved from removed sidebar) -->
+                <div class="bg-slate-900/90 backdrop-blur p-3 rounded-2xl border border-slate-700 text-xs flex flex-col gap-1.5 shadow-lg w-full">
+                    <div class="flex justify-between gap-6">
+                        <span class="text-slate-400">사냥:</span>
+                        <span id="stat-kills" class="font-bold text-red-400 font-game">0</span>
+                    </div>
+                    <div class="flex justify-between gap-6">
+                        <span class="text-slate-400">먹이:</span>
+                        <span id="stat-foods" class="font-bold text-green-400 font-game">0</span>
+                    </div>
+                    <div class="flex justify-between gap-6">
+                        <span class="text-slate-400">시간:</span>
+                        <span id="stat-time" class="font-bold text-blue-400 font-game">00:00</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- EXP Progress Bar -->
+            <div class="flex-1 max-w-md mx-auto bg-slate-900/90 backdrop-blur border border-slate-700 p-2.5 rounded-2xl shadow-lg pointer-events-auto flex flex-col gap-1">
+                <div class="flex justify-between text-[10px] font-bold">
+                    <span class="text-amber-400 uppercase tracking-wider font-game">EXP Progress</span>
+                    <span id="hud-exp-ratio" class="font-game">0 / 20</span>
+                </div>
+                <div class="w-full bg-slate-800 h-2.5 rounded-full overflow-hidden">
+                    <div id="hud-exp-bar" class="bg-gradient-to-r from-amber-400 to-orange-500 h-full w-[0%] transition-all duration-300"></div>
+                </div>
+            </div>
+
+            <!-- Pause / Menu button -->
+            <button onclick="togglePause()" class="pointer-events-auto bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white w-10 h-10 shrink-0 rounded-2xl flex items-center justify-center border border-slate-700 transition-all shadow-lg">
+                <i id="pause-icon" class="fa-solid fa-pause"></i>
+            </button>
+        </div>
+
+        <!-- Main Game Canvas -->
+        <canvas id="gameCanvas" class="block w-full h-full cursor-crosshair"></canvas>
+
+        <!-- Virtual Joystick for Mobile users -->
+        <div id="joystick-container" class="absolute bottom-6 left-6 w-28 h-28 bg-white/5 border border-white/10 rounded-full flex items-center justify-center pointer-events-auto z-20 md:hidden opacity-70 hover:opacity-100 transition-opacity">
+            <div id="joystick-handle" class="w-10 h-10 bg-white/20 border-2 border-white/40 rounded-full transition-transform duration-75"></div>
+        </div>
+
+        <!-- Start/Intro Modal Screen -->
+        <div id="start-modal" class="fixed inset-0 bg-slate-950/95 z-50 overflow-y-auto flex items-center justify-center p-4">
+            <div class="bg-slate-900 border-2 border-slate-700 max-w-md w-full rounded-3xl p-6 my-auto text-center shadow-2xl animate-fade-in">
+                <span class="text-6xl block mb-4 animate-bounce">🧬🦁🐲</span>
+                <h2 class="text-2xl font-black font-game text-amber-400 mb-2">에볼루션 아레나 20</h2>
+                <p class="text-sm text-slate-300 leading-relaxed mb-6">
+                    최고의 동물 진화 시뮬레이터에 오신 것을 환영합니다!<br>
+                    바닥의 <strong class="text-green-400">내 전용 음식</strong>을 먹거나, <strong class="text-red-400">나보다 단계(Tier)가 낮은 약한 동물</strong>을 격파해 경험치를 얻어 영광스러운 <strong>20단계 황금 드래곤</strong>으로 군림해 보세요!
+                </p>
+
+                <!-- Core rules check list -->
+                <div class="bg-slate-950/60 p-4 rounded-xl text-left border border-slate-800 text-xs text-slate-400 mb-6 flex flex-col gap-2">
+                    <div class="flex items-start gap-2">
+                        <span class="text-green-400">✔️</span>
+                        <span>내 동물의 전용 먹이만 먹을 수 있습니다.</span>
+                    </div>
+                    <div class="flex items-start gap-2">
+                        <span class="text-green-400">✔️</span>
+                        <span>자신보다 티어가 낮은 동물을 터치하면 대량의 보너스 경험치를 흡수합니다!</span>
+                    </div>
+                    <div class="flex items-start gap-2">
+                        <span class="text-red-400">❌</span>
+                        <span>자신보다 레벨이 높은 거대 약육강식 생물들을 피하세요! 순식간에 사냥당합니다.</span>
+                    </div>
+                </div>
+
+                <button onclick="startGame()" class="w-full bg-gradient-to-r from-amber-500 to-orange-500 hover:from-amber-600 hover:to-orange-600 text-white font-black font-game py-3.5 px-6 rounded-2xl shadow-xl transition-all transform active:scale-95 text-base tracking-wide">
+                    게임 시작하기 (PLAY)
+                </button>
+            </div>
+        </div>
+
+        <!-- Game Over Modal -->
+        <div id="gameover-modal" class="hidden fixed inset-0 bg-red-950/90 z-50 overflow-y-auto flex items-center justify-center p-4">
+            <div class="bg-slate-900 border-2 border-red-500/50 max-w-md w-full rounded-3xl p-6 my-auto text-center shadow-2xl">
+                <span class="text-6xl block mb-4">💀</span>
+                <h2 class="text-3xl font-black font-game text-red-500 mb-1">GAME OVER</h2>
+                <p class="text-sm text-slate-400 mb-6">천적 포식자 생물에게 잡아먹혔습니다!</p>
+
+                <!-- Round report cards -->
+                <div class="grid grid-cols-3 gap-3 mb-6">
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                        <div class="text-[10px] text-slate-500 uppercase">최종 진화</div>
+                        <div id="result-tier" class="text-base font-bold text-amber-400 font-game mt-1">1단계</div>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                        <div class="text-[10px] text-slate-500 uppercase">사냥 성공</div>
+                        <div id="result-kills" class="text-base font-bold text-red-400 font-game mt-1">0마리</div>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                        <div class="text-[10px] text-slate-500 uppercase">버틴 시간</div>
+                        <div id="result-time" class="text-base font-bold text-blue-400 font-game mt-1">00:00</div>
+                    </div>
+                </div>
+
+                <button onclick="restartGame()" class="w-full bg-gradient-to-r from-red-500 to-orange-500 hover:from-red-600 hover:to-orange-600 text-white font-black font-game py-3.5 px-6 rounded-2xl shadow-xl transition-all">
+                    다시 도전하기
+                </button>
+            </div>
+        </div>
+
+        <!-- Victory Modal -->
+        <div id="victory-modal" class="hidden fixed inset-0 bg-yellow-950/90 z-50 overflow-y-auto flex items-center justify-center p-4">
+            <div class="bg-slate-900 border-2 border-yellow-500 max-w-md w-full rounded-3xl p-6 my-auto text-center shadow-2xl glow-gold">
+                <span class="text-6xl block mb-4 animate-bounce">👑🐲✨</span>
+                <h2 class="text-3xl font-black font-game text-yellow-400 mb-1">CONGRATULATIONS!</h2>
+                <p class="text-sm text-slate-300 mb-6">생태계 최상위 천상 단계인 황금 드래곤에 도달했습니다!</p>
+
+                <!-- Victory report cards -->
+                <div class="grid grid-cols-2 gap-3 mb-6">
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                        <div class="text-[10px] text-slate-500 uppercase font-game">사냥 성공 수</div>
+                        <div id="vic-kills" class="text-lg font-bold text-red-400 font-game mt-1">0마리</div>
+                    </div>
+                    <div class="bg-slate-950 p-3 rounded-xl border border-slate-800">
+                        <div class="text-[10px] text-slate-500 uppercase font-game">총 생존 시간</div>
+                        <div id="vic-time" class="text-lg font-bold text-blue-400 font-game mt-1">00:00</div>
+                    </div>
+                </div>
+
+                <div class="flex gap-3">
+                    <button onclick="continueEndless()" class="flex-1 bg-slate-800 hover:bg-slate-700 text-slate-300 font-bold py-3.5 rounded-2xl transition-all text-xs">
+                        무한 플레이 계속
+                    </button>
+                    <button onclick="restartGame()" class="flex-1 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-600 hover:to-amber-600 text-slate-950 font-black font-game py-3.5 rounded-2xl shadow-xl transition-all text-xs">
+                        처음부터 재도전
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Floating Evolution Banner -->
+        <div id="evo-banner" class="hidden absolute top-24 left-1/2 transform -translate-x-1/2 bg-gradient-to-r from-amber-500 via-yellow-400 to-orange-500 text-slate-950 font-black font-game px-6 py-2.5 rounded-full text-sm shadow-2xl border border-white/20 animate-bounce z-20">
+            🦁 TIER UP! NEW ANIMAL EVOLVED! 🦁
+        </div>
+    </main>
+
+    <script>
+        // --- Sound Synth Engine using Web Audio API ---
+        const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+        
+        function playSound(type) {
+            try {
+                if (audioCtx.state === 'suspended') audioCtx.resume();
+                
+                const osc = audioCtx.createOscillator();
+                const gain = audioCtx.createGain();
+                osc.connect(gain);
+                gain.connect(audioCtx.destination);
+                
+                if (type === 'eat') {
+                    osc.type = 'triangle';
+                    osc.frequency.setValueAtTime(200, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(380, audioCtx.currentTime + 0.08);
+                    gain.gain.setValueAtTime(0.12, audioCtx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.08);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.08);
+                } else if (type === 'hunt') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(120, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(45, audioCtx.currentTime + 0.22);
+                    gain.gain.setValueAtTime(0.25, audioCtx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.22);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.22);
+                } else if (type === 'evolve') {
+                    osc.type = 'sine';
+                    osc.frequency.setValueAtTime(350, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(700, audioCtx.currentTime + 0.35);
+                    gain.gain.setValueAtTime(0.2, audioCtx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.35);
+                } else if (type === 'hurt') {
+                    osc.type = 'sawtooth';
+                    osc.frequency.setValueAtTime(150, audioCtx.currentTime);
+                    osc.frequency.exponentialRampToValueAtTime(20, audioCtx.currentTime + 0.35);
+                    gain.gain.setValueAtTime(0.35, audioCtx.currentTime);
+                    gain.gain.linearRampToValueAtTime(0.01, audioCtx.currentTime + 0.35);
+                    osc.start();
+                    osc.stop(audioCtx.currentTime + 0.35);
+                }
+            } catch(e) {}
+        }
+
+        // --- Core 20 Evolutionary Stages ---
+        const EVOLUTION_STAGES = [
+            { tier: 1,  name: "미생물 (🐛)", emoji: "🐛", foodType: "algae",    foodName: "플랑크톤/이끼", foodColor: "#22c55e", foodEmoji: "🟢", expToNext: 7,   speed: 2.5, size: 12 },
+            { tier: 2,  name: "개미 (🐜)",   emoji: "🐜", foodType: "sugar",    foodName: "달콤한 설탕",   foodColor: "#f43f5e", foodEmoji: "🍬", expToNext: 8,   speed: 2.4, size: 14 },
+            { tier: 3,  name: "달팽이 (🐌)", emoji: "🐌", foodType: "leaf",     foodName: "이슬 맺힌 잎",   foodColor: "#10b981", foodEmoji: "🍃", expToNext: 10,  speed: 2.3, size: 16 },
+            { tier: 4,  name: "개구리 (🐸)", emoji: "🐸", foodType: "fly",      foodName: "작은 곤충/파리", foodColor: "#84cc16", foodEmoji: "🪰", expToNext: 12,  speed: 2.2, size: 18 },
+            { tier: 5,  name: "쥐 (🐭)",     emoji: "🐭", foodType: "cheese",   foodName: "노란 치즈 조각", foodColor: "#fbbf24", foodEmoji: "🧀", expToNext: 13,  speed: 2.1, size: 20 },
+            { tier: 6,  name: "토끼 (🐰)",   emoji: "🐰", foodType: "carrot",   foodName: "신선한 당근",   foodColor: "#f97316", foodEmoji: "🥕", expToNext: 15,  speed: 2.0, size: 22 },
+            { tier: 7,  name: "고슴도치 (🦔)", emoji: "🦔", foodType: "worm",     foodName: "꿈틀 꿈틀 애벌레", foodColor: "#b45309", foodEmoji: "🪱", expToNext: 17,  speed: 1.9, size: 24 },
+            { tier: 8,  name: "여우 (🦊)",   emoji: "🦊", foodType: "berry",    foodName: "달콤한 산딸기", foodColor: "#ef4444", foodEmoji: "🍒", expToNext: 18,  speed: 1.8, size: 26 },
+            { tier: 9,  name: "원숭이 (🐒)", emoji: "🐒", foodType: "banana",   foodName: "잘 익은 바나나", foodColor: "#facc15", foodEmoji: "🍌", expToNext: 20,  speed: 1.7, size: 28 },
+            { tier: 10, name: "양 (🐑)",     emoji: "🐑", foodType: "grass",    foodName: "영양 만점 목초", foodColor: "#34d399", foodEmoji: "🌾", expToNext: 22,  speed: 1.6, size: 31 },
+            { tier: 11, name: "멧돼지 (🐗)", emoji: "🐗", foodType: "acorn",    foodName: "고소한 도토리", foodColor: "#78350f", foodEmoji: "🌰", expToNext: 23,  speed: 1.5, size: 34 },
+            { tier: 12, name: "늑대 (🐺)",   emoji: "🐺", foodType: "meat",     foodName: "날고기 조각",   foodColor: "#dc2626", foodEmoji: "🥩", expToNext: 25,  speed: 1.4, size: 37 },
+            { tier: 13, name: "표범 (🐆)",   emoji: "🐆", foodType: "chicken",  foodName: "새 사냥 고기",   foodColor: "#f59e0b", foodEmoji: "🍗", expToNext: 27,  speed: 1.3, size: 40 },
+            { tier: 14, name: "호랑이 (🐯)", emoji: "🐯", foodType: "pork",     foodName: "두툼한 갈비살", foodColor: "#e11d48", foodEmoji: "🍖", expToNext: 28,  speed: 1.2, size: 43 },
+            { tier: 15, name: "사자 (🦁)",   emoji: "🦁", foodType: "beef",     foodName: "대형 멧돼지 고기", foodColor: "#be123c", foodEmoji: "🥩", expToNext: 30,  speed: 1.1, size: 46 },
+            { tier: 16, name: "불곰 (🐻)",   emoji: "🐻", foodType: "honey",    foodName: "달콤한 벌집 꿀", foodColor: "#ca8a04", foodEmoji: "🍯", expToNext: 33,  speed: 1.0, size: 50 },
+            { tier: 17, name: "코끼리 (🐘)", emoji: "🐘", foodType: "apple",    foodName: "잘 익은 붉은 사과", foodColor: "#f87171", foodEmoji: "🍎", expToNext: 40,  speed: 0.9, size: 54 },
+            { tier: 18, name: "티라노 (🦖)", emoji: "🦖", foodType: "bone",     foodName: "거대 공룡 뼈다귀", foodColor: "#a8a29e", foodEmoji: "🦴", expToNext: 50,  speed: 0.8, size: 58 },
+            { tier: 19, name: "드래곤 (🐉)", emoji: "🐉", foodType: "fire",     foodName: "뜨거운 파이어 볼", foodColor: "#ea580c", foodEmoji: "🔥", expToNext: 67,  speed: 0.7, size: 62 },
+            { tier: 20, name: "황금용 (🐲)", emoji: "🐲", foodType: "crystal",  foodName: "우주 마법 수정", foodColor: "#eab308", foodEmoji: "💎", expToNext: 999999, speed: 0.6, size: 68 }
+        ];
+
+        // --- Core Game Variables & Map Coordinates ---
+        const WORLD_WIDTH = 3000;
+        const WORLD_HEIGHT = 3000;
+        
+        let canvas = document.getElementById("gameCanvas");
+        let ctx = canvas.getContext("2d");
+
+        let gameState = {
+            running: false,
+            paused: false,
+            victoryReached: false,
+            endlessMode: false,
+            startTime: 0,
+            elapsedSeconds: 0,
+            statKills: 0,
+            statFoods: 0,
+            lastFoodSpawnMinute: 0,
+            
+            cameraX: WORLD_WIDTH / 2,
+            cameraY: WORLD_HEIGHT / 2,
+            
+            player: null,
+            aiAnimals: [],
+            foods: [],
+            particles: []
+        };
+
+        // Resize utility
+        function resizeCanvas() {
+            canvas.width = canvas.parentElement ? canvas.parentElement.clientWidth : window.innerWidth;
+            canvas.height = canvas.parentElement ? canvas.parentElement.clientHeight : window.innerHeight;
+        }
+        window.addEventListener("resize", resizeCanvas);
+        resizeCanvas();
+
+        // Keyboard tracking
+        let keys = {};
+        window.addEventListener("keydown", e => keys[e.key.toLowerCase()] = true);
+        window.addEventListener("keyup", e => keys[e.key.toLowerCase()] = false);
+
+        // Virtual joystick tracking
+        let joystickActive = false;
+        let joystickStart = { x: 0, y: 0 };
+        let joystickMove = { x: 0, y: 0 };
+
+        const joystickContainer = document.getElementById("joystick-container");
+        const joystickHandle = document.getElementById("joystick-handle");
+
+        joystickContainer.addEventListener("touchstart", e => {
+            joystickActive = true;
+            const rect = joystickContainer.getBoundingClientRect();
+            joystickStart = {
+                x: rect.left + rect.width / 2,
+                y: rect.top + rect.height / 2
+            };
+        });
+
+        joystickContainer.addEventListener("touchmove", e => {
+            if (!joystickActive) return;
+            const touch = e.touches[0];
+            const deltaX = touch.clientX - joystickStart.x;
+            const deltaY = touch.clientY - joystickStart.y;
+            const distance = Math.min(Math.sqrt(deltaX*deltaX + deltaY*deltaY), 35);
+            
+            const angle = Math.atan2(deltaY, deltaX);
+            const handleX = Math.cos(angle) * distance;
+            const handleY = Math.sin(angle) * distance;
+            
+            joystickHandle.style.transform = `translate(${handleX}px, ${handleY}px)`;
+            
+            joystickMove.x = Math.cos(angle) * (distance / 35);
+            joystickMove.y = Math.sin(angle) * (distance / 35);
+        });
+
+        joystickContainer.addEventListener("touchend", () => {
+            joystickActive = false;
+            joystickHandle.style.transform = "translate(0px, 0px)";
+            joystickMove = { x: 0, y: 0 };
+        });
+
+        // Mouse/Click and Touch dragging targeting
+        let pointerTarget = null;
+        function updatePointerTarget(clientX, clientY) {
+            const rect = canvas.getBoundingClientRect();
+            pointerTarget = {
+                x: clientX - rect.left + gameState.cameraX - canvas.width / 2,
+                y: clientY - rect.top + gameState.cameraY - canvas.height / 2
+            };
+        }
+
+        canvas.addEventListener("mousedown", e => {
+            if (!gameState.running || gameState.paused) return;
+            updatePointerTarget(e.clientX, e.clientY);
+        });
+        canvas.addEventListener("mousemove", e => {
+            if (pointerTarget) updatePointerTarget(e.clientX, e.clientY);
+        });
+        window.addEventListener("mouseup", () => { pointerTarget = null; });
+
+        canvas.addEventListener("touchstart", e => {
+            if (e.touches.length > 1) return;
+            updatePointerTarget(e.touches[0].clientX, e.touches[0].clientY);
+        });
+        canvas.addEventListener("touchmove", e => {
+            if (pointerTarget && e.touches.length === 1) {
+                updatePointerTarget(e.touches[0].clientX, e.touches[0].clientY);
+            }
+        });
+        canvas.addEventListener("touchend", () => { pointerTarget = null; });
+
+        function renderEvolutionTreeDOM() {
+            const list = document.getElementById("evolution-guide-list");
+            if (!list) return;
+            list.innerHTML = "";
+            
+            EVOLUTION_STAGES.forEach(stage => {
+                const isPlayerTier = gameState.player && gameState.player.tier === stage.tier;
+                
+                const item = document.createElement("div");
+                item.className = `px-3 py-1.5 rounded-full border flex items-center gap-2 transition-all shrink-0 ${
+                    isPlayerTier 
+                        ? 'bg-amber-500/30 border-amber-400 shadow-md glow-orange scale-105' 
+                        : 'bg-slate-900/60 border-slate-700/50 opacity-60 hover:opacity-100 cursor-pointer'
+                }`;
+                
+                // Keep the stage name short by splitting out any parenthesis
+                const shortName = stage.name.split(' ')[0];
+                
+                item.innerHTML = `
+                    <span class="text-xs bg-slate-800 px-1.5 py-0.5 rounded text-slate-300 font-game font-bold">T${stage.tier}</span>
+                    <span class="${isPlayerTier ? 'text-amber-300 font-bold' : 'text-slate-300'} text-xs tracking-wide">${stage.emoji} ${shortName}</span>
+                    <span class="text-[10px] text-green-300 ml-1 border-l border-slate-600 pl-2">먹이: ${stage.foodEmoji}</span>
+                `;
+                list.appendChild(item);
+
+                // Auto-scroll horizontally to center on current player tier
+                if (isPlayerTier) {
+                    setTimeout(() => {
+                        item.scrollIntoView({ behavior: 'smooth', block: 'nearest', inline: 'center' });
+                    }, 100);
+                }
+            });
+        }
+
+        // --- Particle Effect Constructor ---
+        class Particle {
+            constructor(x, y, color, speed, duration) {
+                this.x = x;
+                this.y = y;
+                this.color = color;
+                this.angle = Math.random() * Math.PI * 2;
+                this.speed = Math.random() * speed + 1;
+                this.radius = Math.random() * 3 + 2;
+                this.alpha = 1;
+                this.decay = 1 / (duration || 30);
+            }
+            update() {
+                this.x += Math.cos(this.angle) * this.speed;
+                this.y += Math.sin(this.angle) * this.speed;
+                this.alpha -= this.decay;
+            }
+            draw(offsetX, offsetY) {
+                ctx.save();
+                ctx.globalAlpha = this.alpha;
+                ctx.fillStyle = this.color;
+                ctx.beginPath();
+                ctx.arc(this.x - offsetX, this.y - offsetY, this.radius, 0, Math.PI * 2);
+                ctx.fill();
+                ctx.restore();
+            }
+        }
+
+        function spawnExplosion(x, y, color, count, speed) {
+            for (let i = 0; i < (count || 12); i++) {
+                gameState.particles.push(new Particle(x, y, color || "#facc15", speed || 4, 35));
+            }
+        }
+
+        // --- Food Item Constructor ---
+        class Food {
+            constructor() {
+                this.respawn();
+            }
+            respawn() {
+                this.x = Math.random() * (WORLD_WIDTH - 60) + 30;
+                this.y = Math.random() * (WORLD_HEIGHT - 60) + 30;
+                
+                const stage = EVOLUTION_STAGES[Math.floor(Math.random() * EVOLUTION_STAGES.length)];
+                this.type = stage.foodType;
+                this.color = stage.foodColor;
+                this.emoji = stage.foodEmoji;
+                this.size = 10;
+            }
+            draw(offsetX, offsetY) {
+                ctx.save();
+                ctx.font = "14px Arial";
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(this.emoji, this.x - offsetX, this.y - offsetY);
+                ctx.restore();
+            }
+        }
+
+        // --- Animal Entity class (Covers Player and AI) ---
+        class Animal {
+            constructor(isPlayer, tier, x, y) {
+                this.isPlayer = isPlayer;
+                this.tier = tier;
+                
+                this.x = x || Math.random() * (WORLD_WIDTH - 200) + 100;
+                this.y = y || Math.random() * (WORLD_HEIGHT - 200) + 100;
+                
+                this.angle = Math.random() * Math.PI * 2;
+                this.targetAngle = this.angle;
+                
+                this.exp = 0;
+                this.isDead = false;
+
+                this.aiDecisionTimer = 0;
+                this.aiTarget = null;
+                this.aiActionState = "wander"; // "wander", "chase", "flee"
+
+                this.applyTierStats();
+            }
+
+            applyTierStats() {
+                const stage = EVOLUTION_STAGES[this.tier - 1];
+                this.name = stage.name;
+                this.emoji = stage.emoji;
+                this.speed = stage.speed;
+                this.size = stage.size;
+                this.expToNext = stage.expToNext;
+                this.foodType = stage.foodType;
+                
+                this.canEat = [];
+                for (let i = 1; i < this.tier; i++) {
+                    this.canEat.push(i);
+                }
+            }
+
+            evolve() {
+                if (this.tier >= 20) {
+                    if (this.isPlayer && !gameState.victoryReached) {
+                        triggerVictory();
+                    }
+                    return;
+                }
+                
+                this.tier++;
+                this.exp = 0;
+                this.applyTierStats();
+                
+                spawnExplosion(this.x, this.y, "#eab308", 35, 7);
+                playSound('evolve');
+
+                if (this.isPlayer) {
+                    renderEvolutionTreeDOM();
+                    showEvolutionBanner();
+                    updateHUD();
+                }
+            }
+
+            update() {
+                if (this.isDead) return;
+
+                if (this.isPlayer) {
+                    this.handlePlayerInput();
+                } else {
+                    this.handleAISimulation();
+                }
+
+                const moveSpeed = this.speed;
+                this.x += Math.cos(this.angle) * moveSpeed;
+                this.y += Math.sin(this.angle) * moveSpeed;
+
+                this.x = Math.max(this.size, Math.min(WORLD_WIDTH - this.size, this.x));
+                this.y = Math.max(this.size, Math.min(WORLD_HEIGHT - this.size, this.y));
+
+                this.checkFoodCollisions();
+            }
+
+            handlePlayerInput() {
+                let dx = 0;
+                let dy = 0;
+
+                if (keys['w'] || keys['arrowup']) dy = -1;
+                if (keys['s'] || keys['arrowdown']) dy = 1;
+                if (keys['a'] || keys['arrowleft']) dx = -1;
+                if (keys['d'] || keys['arrowright']) dx = 1;
+
+                if (dx !== 0 || dy !== 0) {
+                    this.angle = Math.atan2(dy, dx);
+                } else if (joystickActive) {
+                    this.angle = Math.atan2(joystickMove.y, joystickMove.x);
+                } else if (pointerTarget) {
+                    const clickDx = pointerTarget.x - this.x;
+                    const clickDy = pointerTarget.y - this.y;
+                    const dist = Math.sqrt(clickDx*clickDx + clickDy*clickDy);
+                    if (dist > 15) {
+                        this.angle = Math.atan2(clickDy, clickDx);
+                    }
+                }
+            }
+
+            handleAISimulation() {
+                this.aiDecisionTimer--;
+                
+                if (this.aiDecisionTimer <= 0) {
+                    this.aiDecisionTimer = 20 + Math.floor(Math.random() * 20);
+                    this.findBestAITarget();
+                }
+
+                if (this.aiActionState === "flee" && this.aiTarget) {
+                    const fdx = this.x - this.aiTarget.x;
+                    const fdy = this.y - this.aiTarget.y;
+                    this.angle = Math.atan2(fdy, fdx);
+                } else if (this.aiActionState === "chase" && this.aiTarget) {
+                    const cdx = this.aiTarget.x - this.x;
+                    const cdy = this.aiTarget.y - this.y;
+                    this.angle = Math.atan2(cdy, cdx);
+                } else {
+                    if (Math.random() < 0.05) {
+                        this.angle += (Math.random() - 0.5) * 1.5;
+                    }
+                }
+            }
+
+            findBestAITarget() {
+                if (!gameState.player) return;
+
+                let nearestThreat = null;
+                let minThreatDist = 200;
+
+                const pDist = Math.hypot(gameState.player.x - this.x, gameState.player.y - this.y);
+                if (!gameState.player.isDead) {
+                    if (gameState.player.tier > this.tier && pDist < minThreatDist) {
+                        nearestThreat = gameState.player;
+                        minThreatDist = pDist;
+                    }
+                }
+
+                gameState.aiAnimals.forEach(other => {
+                    if (other === this || other.isDead) return;
+                    const dist = Math.hypot(other.x - this.x, other.y - this.y);
+                    if (other.tier > this.tier && dist < minThreatDist) {
+                        nearestThreat = other;
+                        minThreatDist = dist;
+                    }
+                });
+
+                if (nearestThreat) {
+                    this.aiTarget = nearestThreat;
+                    this.aiActionState = "flee";
+                    return;
+                }
+
+                let nearestPrey = null;
+                let minPreyDist = 250;
+
+                if (!gameState.player.isDead && gameState.player.tier < this.tier && pDist < minPreyDist) {
+                    nearestPrey = gameState.player;
+                    minPreyDist = pDist;
+                }
+
+                gameState.aiAnimals.forEach(other => {
+                    if (other === this || other.isDead) return;
+                    const dist = Math.hypot(other.x - this.x, other.y - this.y);
+                    if (other.tier < this.tier && dist < minPreyDist) {
+                        nearestPrey = other;
+                        minPreyDist = dist;
+                    }
+                });
+
+                if (nearestPrey) {
+                    this.aiTarget = nearestPrey;
+                    this.aiActionState = "chase";
+                    return;
+                }
+
+                let nearestFood = null;
+                let minFoodDist = 300;
+                
+                gameState.foods.forEach(food => {
+                    if (food.type !== this.foodType) return;
+                    const dist = Math.hypot(food.x - this.x, food.y - this.y);
+                    if (dist < minFoodDist) {
+                        nearestFood = food;
+                        minFoodDist = dist;
+                    }
+                });
+
+                if (nearestFood) {
+                    this.aiTarget = nearestFood;
+                    this.aiActionState = "chase";
+                } else {
+                    this.aiTarget = null;
+                    this.aiActionState = "wander";
+                }
+            }
+
+            checkFoodCollisions() {
+                gameState.foods.forEach(food => {
+                    if (food.type !== this.foodType) return;
+                    
+                    const dist = Math.hypot(food.x - this.x, food.y - this.y);
+                    const eatThreshold = this.size + 4;
+                    
+                    if (dist < eatThreshold) {
+                        food.respawn();
+                        this.exp += 8;
+                        
+                        if (this.isPlayer) {
+                            gameState.statFoods++;
+                            const statFoodsEl = document.getElementById("stat-foods");
+                            if (statFoodsEl) statFoodsEl.innerText = gameState.statFoods;
+                            playSound('eat');
+                            spawnExplosion(this.x, this.y, this.color, 4, 2);
+                            updateHUD();
+                        }
+                        
+                        if (this.exp >= this.expToNext) {
+                            this.evolve();
+                        }
+                    }
+                });
+            }
+
+            draw(offsetX, offsetY) {
+                if (this.isDead) return;
+
+                ctx.save();
+                ctx.translate(this.x - offsetX, this.y - offsetY);
+                ctx.rotate(this.angle + Math.PI / 2);
+
+                ctx.beginPath();
+                ctx.arc(0, 0, this.size, 0, Math.PI * 2);
+                if (this.isPlayer) {
+                    ctx.fillStyle = "rgba(245, 158, 11, 0.25)";
+                    ctx.strokeStyle = "#f59e0b";
+                } else {
+                    ctx.fillStyle = "rgba(71, 85, 105, 0.2)";
+                    ctx.strokeStyle = "#94a3b8";
+                }
+                ctx.lineWidth = 2.5;
+                ctx.fill();
+                ctx.stroke();
+
+                ctx.restore();
+                ctx.save();
+                ctx.translate(this.x - offsetX, this.y - offsetY);
+
+                ctx.font = `${this.size * 1.2}px Arial`;
+                ctx.textAlign = "center";
+                ctx.textBaseline = "middle";
+                ctx.fillText(this.emoji, 0, 0);
+
+                ctx.font = "9px Orbitron";
+                ctx.fillStyle = this.isPlayer ? "#f59e0b" : "#cbd5e1";
+                ctx.textAlign = "center";
+                ctx.fillText(`${this.isPlayer ? 'Player' : 'AI'} (T${this.tier})`, 0, -this.size - 8);
+
+                if (this.tier < 20) {
+                    const barW = this.size * 1.5;
+                    const barH = 3;
+                    const barY = -this.size - 4;
+                    ctx.fillStyle = "#1e293b";
+                    ctx.fillRect(-barW/2, barY, barW, barH);
+                    
+                    ctx.fillStyle = "#eab308";
+                    const progress = Math.min(1, this.exp / this.expToNext);
+                    ctx.fillRect(-barW/2, barY, barW * progress, barH);
+                }
+
+                ctx.restore();
+            }
+        }
+
+        Animal.prototype.respawnAI = function() {
+            this.isDead = false;
+            this.x = Math.random() * (WORLD_WIDTH - 200) + 100;
+            this.y = Math.random() * (WORLD_HEIGHT - 200) + 100;
+            this.exp = 0;
+            
+            const pTier = gameState.player ? gameState.player.tier : 1;
+            const diff = Math.floor(Math.random() * 7) - 3;
+            this.tier = Math.max(1, Math.min(20, pTier + diff));
+            this.applyTierStats();
+        };
+
+        function processHunterCollisions() {
+            if (!gameState.player) return;
+
+            if (!gameState.player.isDead) {
+                gameState.aiAnimals.forEach(ai => {
+                    if (ai.isDead) return;
+                    
+                    const dist = Math.hypot(ai.x - gameState.player.x, ai.y - gameState.player.y);
+                    const combatDistance = (gameState.player.size + ai.size) * 0.85;
+
+                    if (dist < combatDistance) {
+                        if (gameState.player.tier > ai.tier) {
+                            ai.isDead = true;
+                            
+                            const minExpGained = EVOLUTION_STAGES[ai.tier - 1].expToNext;
+                            gameState.player.exp += minExpGained;
+                            
+                            gameState.statKills++;
+                            const statKillsEl = document.getElementById("stat-kills");
+                            if (statKillsEl) statKillsEl.innerText = gameState.statKills;
+                            
+                            spawnExplosion(ai.x, ai.y, "#ef4444", 25, 5);
+                            playSound('hunt');
+
+                            setTimeout(() => { ai.respawnAI(); }, 5000);
+
+                            if (gameState.player.exp >= gameState.player.expToNext) {
+                                gameState.player.evolve();
+                            }
+                            updateHUD();
+                        } else if (ai.tier > gameState.player.tier) {
+                            triggerGameOver();
+                        }
+                    }
+                });
+            }
+
+            for (let i = 0; i < gameState.aiAnimals.length; i++) {
+                const aiA = gameState.aiAnimals[i];
+                if (aiA.isDead) continue;
+
+                for (let j = i + 1; j < gameState.aiAnimals.length; j++) {
+                    const aiB = gameState.aiAnimals[j];
+                    if (aiB.isDead) continue;
+
+                    const dist = Math.hypot(aiB.x - aiA.x, aiB.y - aiA.y);
+                    const combatDistance = (aiA.size + aiB.size) * 0.85;
+
+                    if (dist < combatDistance) {
+                        if (aiA.tier > aiB.tier) {
+                            aiB.isDead = true;
+                            aiA.exp += EVOLUTION_STAGES[aiB.tier - 1].expToNext;
+                            spawnExplosion(aiB.x, aiB.y, "#ef4444", 15, 3);
+                            
+                            setTimeout(() => { aiB.respawnAI(); }, 5000);
+                            
+                            if (aiA.exp >= aiA.expToNext) aiA.evolve();
+                        } else if (aiB.tier > aiA.tier) {
+                            aiA.isDead = true;
+                            aiB.exp += EVOLUTION_STAGES[aiA.tier - 1].expToNext;
+                            spawnExplosion(aiA.x, aiA.y, "#ef4444", 15, 3);
+                            
+                            setTimeout(() => { aiA.respawnAI(); }, 5000);
+                            
+                            if (aiB.exp >= aiB.expToNext) aiB.evolve();
+                        }
+                    }
+                }
+            }
+        }
+
+        // --- Core Loops ---
+        function updateGame() {
+            if (!gameState.running || gameState.paused || !gameState.player) return;
+
+            const curSeconds = Math.floor((Date.now() - gameState.startTime) / 1000);
+            if (curSeconds !== gameState.elapsedSeconds) {
+                gameState.elapsedSeconds = curSeconds;
+                const min = String(Math.floor(curSeconds / 60)).padStart(2, '0');
+                const sec = String(curSeconds % 60).padStart(2, '0');
+                const statTimeEl = document.getElementById("stat-time");
+                if (statTimeEl) statTimeEl.innerText = `${min}:${sec}`;
+
+                // 1분(60초) 단위로 먹이 100개 추가 스폰 로직
+                const curMinute = Math.floor(curSeconds / 60);
+                if (curMinute > 0 && curMinute > gameState.lastFoodSpawnMinute) {
+                    gameState.lastFoodSpawnMinute = curMinute;
+                    for (let i = 0; i < 100; i++) {
+                        gameState.foods.push(new Food());
+                    }
+                    
+                    const banner = document.getElementById("evo-banner");
+                    if (banner) {
+                        banner.innerText = `🍏 자연의 축복! 새로운 먹이가 100개 추가되었습니다! 🍏`;
+                        banner.classList.remove("hidden");
+                        setTimeout(() => banner.classList.add("hidden"), 3000);
+                    }
+                }
+            }
+
+            gameState.player.update();
+
+            gameState.cameraX = gameState.player.x;
+            gameState.cameraY = gameState.player.y;
+
+            gameState.cameraX = Math.max(canvas.width / 2, Math.min(WORLD_WIDTH - canvas.width / 2, gameState.cameraX));
+            gameState.cameraY = Math.max(canvas.height / 2, Math.min(WORLD_HEIGHT - canvas.height / 2, gameState.cameraY));
+
+            gameState.aiAnimals.forEach(ai => ai.update());
+
+            processHunterCollisions();
+
+            for (let i = gameState.particles.length - 1; i >= 0; i--) {
+                gameState.particles[i].update();
+                if (gameState.particles[i].alpha <= 0) {
+                    gameState.particles.splice(i, 1);
+                }
+            }
+        }
+
+        function drawGame() {
+            ctx.fillStyle = "#020617";
+            ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+            // absolute guard: Do not attempt to calculate coordinates if the player isn't loaded yet
+            if (!gameState.player) return;
+
+            const offsetX = gameState.cameraX - canvas.width / 2;
+            const offsetY = gameState.cameraY - canvas.height / 2;
+
+            ctx.save();
+            ctx.strokeStyle = "#1e293b";
+            ctx.lineWidth = 1;
+            const gridSize = 100;
+            
+            const startX = Math.floor(offsetX / gridSize) * gridSize;
+            const startY = Math.floor(offsetY / gridSize) * gridSize;
+            const endX = startX + canvas.width + gridSize;
+            const endY = startY + canvas.height + gridSize;
+
+            for (let x = startX; x < endX; x += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(x - offsetX, 0);
+                ctx.lineTo(x - offsetX, canvas.height);
+                ctx.stroke();
+            }
+            for (let y = startY; y < endY; y += gridSize) {
+                ctx.beginPath();
+                ctx.moveTo(0, y - offsetY);
+                ctx.lineTo(canvas.width, y - offsetY);
+                ctx.stroke();
+            }
+            ctx.restore();
+
+            ctx.save();
+            ctx.strokeStyle = "#f43f5e";
+            ctx.lineWidth = 8;
+            ctx.strokeRect(-offsetX, -offsetY, WORLD_WIDTH, WORLD_HEIGHT);
+            ctx.restore();
+
+            gameState.foods.forEach(food => food.draw(offsetX, offsetY));
+
+            gameState.aiAnimals.forEach(ai => ai.draw(offsetX, offsetY));
+
+            gameState.player.draw(offsetX, offsetY);
+
+            gameState.particles.forEach(p => p.draw(offsetX, offsetY));
+        }
+
+        function gameLoop() {
+            updateGame();
+            drawGame();
+            requestAnimationFrame(gameLoop);
+        }
+
+        function spawnWorldEntities() {
+            gameState.foods = [];
+            gameState.aiAnimals = [];
+            gameState.particles = [];
+
+            for (let i = 0; i < 840; i++) {
+                gameState.foods.push(new Food());
+            }
+
+            const initialTiers = [1, 1, 2, 2, 3, 3, 4, 4, 5, 5, 6, 7, 8, 9, 10];
+            initialTiers.forEach(tier => {
+                gameState.aiAnimals.push(new Animal(false, tier));
+            });
+        }
+
+        function updateHUD() {
+            if (!gameState.player) return;
+            const player = gameState.player;
+            const progressRatio = player.tier === 20 ? "MAX TIER" : `${player.exp} / ${player.expToNext}`;
+            
+            const hudEmojiEl = document.getElementById("hud-animal-emoji");
+            const hudNameEl = document.getElementById("hud-animal-name");
+            const hudRatioEl = document.getElementById("hud-exp-ratio");
+            const hudBarEl = document.getElementById("hud-exp-bar");
+
+            if (hudEmojiEl) hudEmojiEl.innerText = player.emoji;
+            if (hudNameEl) hudNameEl.innerText = `${player.tier}단계: ${player.name.replace(/\(.*?\)/, '')}`;
+            if (hudRatioEl) hudRatioEl.innerText = progressRatio;
+            
+            const expPercent = player.tier === 20 ? 100 : Math.min(100, (player.exp / player.expToNext) * 100);
+            if (hudBarEl) hudBarEl.style.width = `${expPercent}%`;
+        }
+
+        function showEvolutionBanner() {
+            const banner = document.getElementById("evo-banner");
+            if (!banner) return;
+            banner.innerText = `🧬 진화 완료: ${gameState.player.name}! 🧬`;
+            banner.classList.remove("hidden");
+            setTimeout(() => {
+                banner.classList.add("hidden");
+            }, 3000);
+        }
+
+        function togglePause() {
+            gameState.paused = !gameState.paused;
+            const icon = document.getElementById("pause-icon");
+            if (!icon) return;
+            if (gameState.paused) {
+                icon.className = "fa-solid fa-play";
+            } else {
+                icon.className = "fa-solid fa-pause";
+            }
+        }
+
+        function startGame() {
+            const startModal = document.getElementById("start-modal");
+            if (startModal) startModal.classList.add("hidden");
+            
+            gameState.player = new Animal(true, 1, WORLD_WIDTH / 2, WORLD_HEIGHT / 2);
+            gameState.cameraX = WORLD_WIDTH / 2;
+            gameState.cameraY = WORLD_HEIGHT / 2;
+
+            gameState.running = true;
+            gameState.paused = false;
+            gameState.startTime = Date.now();
+            gameState.elapsedSeconds = 0;
+            gameState.statKills = 0;
+            gameState.statFoods = 0;
+            gameState.lastFoodSpawnMinute = 0;
+            gameState.victoryReached = false;
+            gameState.endlessMode = false;
+            
+            spawnWorldEntities();
+            renderEvolutionTreeDOM();
+            updateHUD();
+            
+            playSound('evolve');
+        }
+
+        function triggerGameOver() {
+            gameState.running = false;
+            playSound('hurt');
+
+            const resTierEl = document.getElementById("result-tier");
+            const resKillsEl = document.getElementById("result-kills");
+            const resTimeEl = document.getElementById("result-time");
+            const goModal = document.getElementById("gameover-modal");
+
+            if (resTierEl && gameState.player) resTierEl.innerText = `${gameState.player.tier}단계`;
+            if (resKillsEl) resKillsEl.innerText = `${gameState.statKills}마리`;
+            
+            const min = String(Math.floor(gameState.elapsedSeconds / 60)).padStart(2, '0');
+            const sec = String(gameState.elapsedSeconds % 60).padStart(2, '0');
+            if (resTimeEl) resTimeEl.innerText = `${min}:${sec}`;
+
+            if (goModal) goModal.classList.remove("hidden");
+        }
+
+        function triggerVictory() {
+            gameState.victoryReached = true;
+            playSound('evolve');
+
+            const vicKillsEl = document.getElementById("vic-kills");
+            const vicTimeEl = document.getElementById("vic-time");
+            const vicModal = document.getElementById("victory-modal");
+
+            if (vicKillsEl) vicKillsEl.innerText = `${gameState.statKills}마리`;
+            
+            const min = String(Math.floor(gameState.elapsedSeconds / 60)).padStart(2, '0');
+            const sec = String(gameState.elapsedSeconds % 60).padStart(2, '0');
+            if (vicTimeEl) vicTimeEl.innerText = `${min}:${sec}`;
+
+            if (vicModal) vicModal.classList.remove("hidden");
+        }
+
+        function continueEndless() {
+            gameState.endlessMode = true;
+            const vicModal = document.getElementById("victory-modal");
+            if (vicModal) vicModal.classList.add("hidden");
+        }
+
+        function restartGame() {
+            const goModal = document.getElementById("gameover-modal");
+            const vicModal = document.getElementById("victory-modal");
+            if (goModal) goModal.classList.add("hidden");
+            if (vicModal) vicModal.classList.add("hidden");
+            startGame();
+        }
+
+        window.onload = function() {
+            gameLoop();
+        }
+    </script>
+</body>
+</html>
