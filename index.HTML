@@ -1,4 +1,4 @@
-!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ko">
 <head>
 <meta charset="UTF-8">
@@ -61,3 +61,358 @@
   .kt-legend { display: flex; flex-direction: column; gap: 6px; margin-bottom: 16px; }
   .kt-leg { display: flex; align-items: center; gap: 8px; font-size: 13px; color: #555; }
   .kt-swatch { width: 18px; height: 18px; border-radius: 4px; flex-shrink: 0; }
+
+  /* ── 버튼 ── */
+  .kt-btns { display: flex; flex-direction: column; gap: 6px; }
+  .kt-btns button {
+    width: 100%; padding: 8px; font-size: 13px; border-radius: 8px;
+    border: 1px solid #bbb; background: transparent; cursor: pointer;
+  }
+  .kt-btns button:hover { background: #ece9e0; }
+  .kt-btns button.primary { background: #1a7a7a; border-color: #1a7a7a; color: #fff; }
+  .kt-btns button.primary:hover { background: #196b6b; }
+
+  /* ── 메시지 ── */
+  #kt-msg { margin-top: 12px; font-size: 13px; color: #555; min-height: 20px; }
+  #kt-msg.good { color: #0F6E56; font-weight: 500; }
+  #kt-msg.bad  { color: #993C1D; font-weight: 500; }
+</style>
+</head>
+<body>
+
+<h1>기사여행 (Knight's Tour)</h1>
+<p class="sub">체스 나이트(♞)가 모든 칸을 정확히 한 번씩 방문하게 하세요. 파란 칸이 현재 위치, 노란 칸이 이동 가능한 곳입니다.</p>
+
+<!-- 보드 크기 선택 -->
+<div style="display:flex; align-items:center; gap:8px; margin-bottom:10px; flex-wrap:wrap;">
+  <span style="font-size:13px; color:#555;">보드 크기:</span>
+  <div class="size-selector" id="size-sel">
+    <button class="size-btn active" data-n="5">5×5</button>
+    <button class="size-btn" data-n="6">6×6</button>
+    <button class="size-btn" data-n="8">8×8</button>
+  </div>
+</div>
+
+<!-- 힌트 토글 -->
+<div id="kt-hint-toggle">
+  <input type="checkbox" id="hint-chk" checked style="width:16px;height:16px;cursor:pointer;">
+  <label for="hint-chk" style="cursor:pointer;">힌트 표시 (이동 가능한 칸 강조)</label>
+</div>
+
+<!-- 통계 -->
+<div class="kt-stats">
+  <div class="kt-stat"><div class="lbl">방문한 칸</div><div class="val" id="stat-visited">0</div></div>
+  <div class="kt-stat"><div class="lbl">전체 칸</div><div class="val" id="stat-total">25</div></div>
+  <div class="kt-stat"><div class="lbl">진행률</div><div class="val" id="stat-pct">0%</div></div>
+</div>
+
+<!-- 보드 + 사이드 -->
+<div id="kt-board-wrap">
+  <div id="kt-board"></div>
+  <div class="kt-side">
+    <h3>범례</h3>
+    <div class="kt-legend">
+      <div class="kt-leg"><div class="kt-swatch" style="background:#378ADD"></div>현재 위치</div>
+      <div class="kt-leg"><div class="kt-swatch" style="background:#5DCAA5"></div>이미 방문</div>
+      <div class="kt-leg"><div class="kt-swatch" style="background:#FAC775"></div>이동 가능 (힌트)</div>
+      <div class="kt-leg"><div class="kt-swatch" style="background:#e8dcc8"></div>일반 칸 (밝음)</div>
+      <div class="kt-leg"><div class="kt-swatch" style="background:#b08050"></div>일반 칸 (어두움)</div>
+    </div>
+    <div class="kt-btns">
+      <button class="primary" onclick="undoMove()">↩ 한 칸 되돌리기</button>
+      <button onclick="autoSolve()">✨ 자동 풀기</button>
+      <button onclick="resetGame()">↺ 다시 시작</button>
+      <button onclick="newStart()">🎲 시작점 랜덤 변경</button>
+    </div>
+    <div id="kt-msg"></div>
+  </div>
+</div>
+
+<script>
+// ──────────────────────────────────────────
+//  상태 변수
+// ──────────────────────────────────────────
+let N = 5;                     // 보드 크기 (N×N)
+let board   = [];              // 각 칸의 방문 순서 번호 (0 = 미방문)
+let visited = [];              // 방문 여부 배열
+let path    = [];              // 이동 경로 [[r,c], ...]
+let currentPos = null;         // 현재 나이트 위치 [r, c]
+let hintOn  = true;            // 힌트 표시 여부
+let solving = false;           // 자동 풀기 실행 중 여부
+
+// 나이트의 8가지 이동 방향 (Δrow, Δcol)
+const MOVES = [
+  [-2,-1], [-2, 1],
+  [-1,-2], [-1, 2],
+  [ 1,-2], [ 1, 2],
+  [ 2,-1], [ 2, 1]
+];
+
+// ──────────────────────────────────────────
+//  유틸
+// ──────────────────────────────────────────
+function idx(r, c)      { return r * N + c; }
+function valid(r, c)    { return r >= 0 && r < N && c >= 0 && c < N; }
+
+// (r,c)에서 나이트가 이동 가능한 모든 칸 반환
+function knightMoves(r, c) {
+  return MOVES
+    .map(([dr, dc]) => [r + dr, c + dc])
+    .filter(([nr, nc]) => valid(nr, nc));
+}
+
+// ──────────────────────────────────────────
+//  게임 초기화
+// ──────────────────────────────────────────
+function initGame(startR, startC) {
+  board      = Array(N * N).fill(0);
+  visited    = Array(N * N).fill(false);
+  path       = [];
+  currentPos = null;
+  placeKnight(startR, startC);
+  renderBoard();
+  updateStats();
+  setMsg('', '');
+}
+
+// 나이트를 (r,c)에 배치하고 상태 갱신
+function placeKnight(r, c) {
+  currentPos    = [r, c];
+  visited[idx(r, c)] = true;
+  path.push([r, c]);
+  board[idx(r, c)] = path.length;   // 방문 순서 기록
+}
+
+// ──────────────────────────────────────────
+//  렌더링
+// ──────────────────────────────────────────
+function renderBoard() {
+  const el = document.getElementById('kt-board');
+  el.style.gridTemplateColumns = `repeat(${N}, 1fr)`;
+  el.innerHTML = '';
+
+  // 이동 가능한 칸 집합 계산
+  const hints   = currentPos ? getHints() : [];
+  const hintSet = new Set(hints.map(([r, c]) => idx(r, c)));
+
+  // 셀 크기: 보드가 클수록 셀을 줄임
+  const cellSize = N <= 5 ? 70 : N === 6 ? 60 : 48;
+
+  for (let r = 0; r < N; r++) {
+    for (let c = 0; c < N; c++) {
+      const i   = idx(r, c);
+      const div = document.createElement('div');
+      div.className = 'kt-cell';
+      div.style.width  = cellSize + 'px';
+      div.style.height = cellSize + 'px';
+      div.style.fontSize = N >= 8 ? '11px' : '13px';
+
+      // 체스판 색 (밝음/어두움)
+      div.classList.add((r + c) % 2 === 0 ? 'light' : 'dark');
+
+      // 상태별 색 덮어쓰기
+      if (currentPos && r === currentPos[0] && c === currentPos[1]) {
+        div.classList.add('current');
+      } else if (visited[i]) {
+        div.classList.add('visited');
+      } else if (hintOn && hintSet.has(i)) {
+        div.classList.add('hint');
+      }
+
+      // 방문 순서 번호 (좌상단)
+      const numEl = document.createElement('div');
+      numEl.className   = 'kt-num';
+      numEl.textContent = visited[i] ? board[i] : '';
+      div.appendChild(numEl);
+
+      // 현재 위치에 나이트 말 표시
+      if (currentPos && r === currentPos[0] && c === currentPos[1]) {
+        const k = document.createElement('div');
+        k.className   = 'kt-knight';
+        k.textContent = '♞';
+        k.style.fontSize = N >= 8 ? '22px' : '30px';
+        div.appendChild(k);
+      }
+
+      // 클릭 이벤트
+      div.addEventListener('click', () => handleClick(r, c));
+      el.appendChild(div);
+    }
+  }
+}
+
+// ──────────────────────────────────────────
+//  이동 로직
+// ──────────────────────────────────────────
+
+// 현재 위치에서 이동 가능한 칸 목록
+function getHints() {
+  if (!currentPos) return [];
+  return knightMoves(...currentPos).filter(([r, c]) => !visited[idx(r, c)]);
+}
+
+// 셀 클릭 처리
+function handleClick(r, c) {
+  if (solving) return;
+
+  // 아직 시작 전이면 클릭한 곳을 시작점으로
+  if (!currentPos) {
+    placeKnight(r, c);
+    renderBoard();
+    updateStats();
+    return;
+  }
+
+  // 이동 가능한 칸인지 확인
+  const ok = getHints().some(([hr, hc]) => hr === r && hc === c);
+  if (!ok) {
+    setMsg('그 칸으로는 이동할 수 없어요! 나이트는 L자로만 움직여요.', 'bad');
+    return;
+  }
+
+  placeKnight(r, c);
+  renderBoard();
+  updateStats();
+  checkWin();
+}
+
+// 한 칸 되돌리기
+function undoMove() {
+  if (solving) return;
+  if (path.length <= 1) { setMsg('더 되돌릴 수 없어요.', 'bad'); return; }
+
+  const last = path.pop();
+  visited[idx(...last)] = false;
+  board[idx(...last)]   = 0;
+  currentPos = path[path.length - 1];
+
+  renderBoard();
+  updateStats();
+  setMsg('한 칸 되돌렸습니다.', '');
+}
+
+// ──────────────────────────────────────────
+//  게임 재시작
+// ──────────────────────────────────────────
+function resetGame() {
+  solving = false;
+  const r = Math.floor(Math.random() * N);
+  const c = Math.floor(Math.random() * N);
+  initGame(r, c);
+}
+
+function newStart() {
+  solving = false;
+  resetGame();
+}
+
+// ──────────────────────────────────────────
+//  통계 & 메시지
+// ──────────────────────────────────────────
+function updateStats() {
+  const v = path.length;
+  const t = N * N;
+  document.getElementById('stat-visited').textContent = v;
+  document.getElementById('stat-total').textContent   = t;
+  document.getElementById('stat-pct').textContent     = Math.round(v / t * 100) + '%';
+}
+
+function checkWin() {
+  if (path.length === N * N) {
+    setMsg('🎉 완성! 모든 칸을 방문했습니다! 기사여행 성공!', 'good');
+  } else if (getHints().length === 0) {
+    setMsg('😔 더 이상 이동할 곳이 없어요. 되돌리거나 다시 시작하세요.', 'bad');
+  }
+}
+
+function setMsg(txt, cls) {
+  const el    = document.getElementById('kt-msg');
+  el.textContent = txt;
+  el.className   = cls;
+}
+
+// ──────────────────────────────────────────
+//  자동 풀기 — 바른스도르프(Warnsdorff) 알고리즘
+//  다음 칸 중 "그다음 이동 선택지가 가장 적은 칸"을 선택
+// ──────────────────────────────────────────
+function warnsdorff(r, c, vis) {
+  return knightMoves(r, c)
+    .filter(([nr, nc]) => !vis[idx(nr, nc)])
+    .map(([nr, nc]) => {
+      // (nr,nc)에서 다시 이동 가능한 칸 수 = 접근성(accessibility)
+      const count = knightMoves(nr, nc)
+        .filter(([rr, rc]) => !vis[idx(rr, rc)]).length;
+      return { r: nr, c: nc, count };
+    })
+    .sort((a, b) => a.count - b.count);   // 접근성이 낮은 순 정렬
+}
+
+async function autoSolve() {
+  if (solving) return;
+  solving = true;
+  setMsg('자동 풀기 중...', '');
+
+  // 상태 초기화 후 현재 시작점 유지
+  let r = currentPos ? currentPos[0] : Math.floor(Math.random() * N);
+  let c = currentPos ? currentPos[1] : Math.floor(Math.random() * N);
+  const vis = Array(N * N).fill(false);
+
+  board      = Array(N * N).fill(0);
+  visited    = Array(N * N).fill(false);
+  path       = [];
+  currentPos = null;
+
+  placeKnight(r, c);
+  vis[idx(r, c)] = true;
+  renderBoard();
+  updateStats();
+
+  // 애니메이션과 함께 한 칸씩 이동
+  for (let step = 1; step < N * N; step++) {
+    if (!solving) break;
+
+    const nexts = warnsdorff(r, c, vis);
+    if (nexts.length === 0) break;     // 막히면 종료
+
+    const { r: nr, c: nc } = nexts[0];
+    vis[idx(nr, nc)] = true;
+    r = nr; c = nc;
+
+    placeKnight(r, c);
+    renderBoard();
+    updateStats();
+
+    // 보드가 클수록 애니메이션 더 빠르게
+    await new Promise(res => setTimeout(res, N >= 8 ? 60 : 100));
+  }
+
+  solving = false;
+  checkWin();
+}
+
+// ──────────────────────────────────────────
+//  UI 이벤트 바인딩
+// ──────────────────────────────────────────
+
+// 보드 크기 선택
+document.getElementById('size-sel').addEventListener('click', e => {
+  const btn = e.target.closest('.size-btn');
+  if (!btn) return;
+  document.querySelectorAll('.size-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  N = parseInt(btn.dataset.n);
+  document.getElementById('stat-total').textContent = N * N;
+  resetGame();
+});
+
+// 힌트 토글
+document.getElementById('hint-chk').addEventListener('change', e => {
+  hintOn = e.target.checked;
+  renderBoard();
+});
+
+// 첫 실행
+resetGame();
+</script>
+</body>
+</html>
